@@ -556,6 +556,7 @@ extern convar_t *r_oldparticles;
 extern convar_t	*cl_predict;
 extern convar_t	*cl_showfps;
 extern convar_t *cl_showpos;
+extern convar_t *cl_showtime;
 extern convar_t	*cl_envshot_size;
 extern convar_t	*cl_timeout;
 extern convar_t	*cl_charset;
@@ -746,6 +747,7 @@ void SCR_NetSpeeds( void );
 void SCR_RSpeeds( void );
 void SCR_DrawFPS( void );
 void SCR_DrawPos( void );
+void SCR_DrawTime( void );
 
 //
 // cl_netgraph.c

@@ -21,6 +21,7 @@ GNU General Public License for more details.
 #include "vgui_draw.h"
 #include "qfont.h"
 #include "library.h"
+#include <time.h>
 
 convar_t *scr_centertime;
 convar_t *scr_loading;
@@ -159,6 +160,48 @@ void SCR_DrawPos( void )
 
 	Con_DrawString( scr_width->integer / 2, 4, msg, color );
 
+}
+
+/*
+==============
+SCR_DrawTime
+
+Draw real time
+==============
+*/
+
+void SCR_DrawTime( void )
+{
+	static char     msg[MAX_SYSPATH];
+	rgba_t color;
+	char min[2],sec[2],buffer[6];
+	time_t rawtime;
+	struct tm * timeinfo;
+
+	if( cls.state != ca_active ) return;
+	if( !cl_showtime->integer || cl.background ) return;
+
+	time ( &rawtime );
+	timeinfo = localtime ( &rawtime );
+
+	sprintf(buffer,"%d",timeinfo->tm_hour);
+
+	sprintf(min,"%d",timeinfo->tm_min);
+	sprintf(sec,"%d",timeinfo->tm_sec);
+	if( strlen(min) < 2 )
+		sprintf(buffer,"%s:0%s",buffer,min);
+	else
+		sprintf(buffer,"%s:%s",buffer,min);
+	if( strlen(sec) < 2 )
+		sprintf(buffer,"%s:0%s",buffer,sec);
+	else
+		sprintf(buffer,"%s:%s",buffer,sec);
+
+	Q_snprintf( msg, MAX_SYSPATH, "time: %s", buffer );
+
+	MakeRGBA( color, 255, 255, 255, 255 );
+
+	Con_DrawString( 4, scr_height->integer / 2, msg, color );
 }
 
 /*
