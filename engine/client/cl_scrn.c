@@ -183,6 +183,7 @@ void SCR_DrawTime( void )
 	char min[2],sec[2],buffer[6];
 	time_t rawtime;
 	struct tm * timeinfo;
+	int offset_w, offset_h;
 
 	if( cls.state != ca_active ) return;
 	if( !cl_showtime->integer || cl.background ) return;
@@ -190,24 +191,39 @@ void SCR_DrawTime( void )
 	time ( &rawtime );
 	timeinfo = localtime ( &rawtime );
 
-	sprintf(buffer,"%d",timeinfo->tm_hour);
+	Q_sprintf(buffer,"%d",timeinfo->tm_hour);
 
-	sprintf(min,"%d",timeinfo->tm_min);
-	sprintf(sec,"%d",timeinfo->tm_sec);
+	Q_sprintf(min,"%d",timeinfo->tm_min);
+	Q_sprintf(sec,"%d",timeinfo->tm_sec);
 	if( strlen(min) < 2 )
-		sprintf(buffer,"%s:0%s",buffer,min);
+		Q_sprintf(buffer,"%s:0%s",buffer,min);
 	else
-		sprintf(buffer,"%s:%s",buffer,min);
+		Q_sprintf(buffer,"%s:%s",buffer,min);
 	if( strlen(sec) < 2 )
-		sprintf(buffer,"%s:0%s",buffer,sec);
+		Q_sprintf(buffer,"%s:0%s",buffer,sec);
 	else
-		sprintf(buffer,"%s:%s",buffer,sec);
+		Q_sprintf(buffer,"%s:%s",buffer,sec);
 
 	Q_snprintf( msg, MAX_SYSPATH, "time: %s", buffer );
 
 	MakeRGBA( color, 255, 255, 255, 255 );
+	Con_DrawStringLen( msg, &offset_w, &offset_h );
 
-	Con_DrawString( 4, scr_height->integer / 2, msg, color );
+	switch( cl_showtime->integer )
+	{
+	case 4:
+		Con_DrawString(scr_width->integer - offset_w , scr_height->integer / 2 - offset_h / 2, msg, color );
+		break;
+	case 3:
+		Con_DrawString(scr_width->integer / 2 - offset_w / 2, 4, msg, color );
+		break;
+	case 2:
+		Con_DrawString(4 , scr_height->integer / 2 - offset_h / 2, msg, color );
+		break;
+	case 1:
+	default:
+		Con_DrawString(scr_width->integer / 2 - offset_w / 2, scr_height->integer-offset_h, msg, color );
+	}
 }
 
 /*
