@@ -139,6 +139,7 @@ Draw local player position, angles and velocity
 void SCR_DrawPos( void )
 {
 	static char	msg[MAX_SYSPATH];
+	char vel[64];
 	float speed;
 	char vel[20];
 
@@ -152,13 +153,14 @@ void SCR_DrawPos( void )
 	speed = VectorLength( cl.frame.client.velocity );
 
 	if( cl_showpos->integer >= 2 )
-		sprintf(vel, "%.2f %.2f %2.2f", cl.frame.client.velocity[0],cl.frame.client.velocity[1], cl.frame.client.velocity[2] );
+		Q_snprintf( vel, sizeof( vel ), "%.2f %.2f %2.2f", cl.frame.client.velocity[0],cl.frame.client.velocity[1], cl.frame.client.velocity[2] );
 	else
-		sprintf(vel,"%.2f",speed);
+		Q_snprintf( vel, sizeof( vel ), "%.2f", speed );
+
 	Q_snprintf( msg, MAX_SYSPATH,
 	"pos: %.2f %.2f %.2f\n"
 	"ang: %.2f %.2f %.2f\n"
-	"vel:  %s", pPlayer->origin[0], pPlayer->origin[1], pPlayer->origin[2],
+	"vel: %s", pPlayer->origin[0], pPlayer->origin[1], pPlayer->origin[2],
 					pPlayer->angles[0], pPlayer->angles[1], pPlayer->angles[2],
 					vel );
 
