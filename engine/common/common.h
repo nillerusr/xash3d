@@ -1023,7 +1023,7 @@ void Con_NPrintf( int idx, char *fmt, ... ) _format(2);
 void Con_NXPrintf( struct con_nprint_s *info, char *fmt, ... ) _format(2);
 void UI_NPrintf( int idx, char *fmt, ... ) _format(2);
 void UI_NXPrintf( struct con_nprint_s *info, char *fmt, ... ) _format(2);
-char *Info_ValueForKey( const char *s, const char *key );
+const char *Info_ValueForKey( const char *s, const char *key );
 void Info_RemovePrefixedKeys( char *start, char prefix );
 qboolean Info_RemoveKey( char *s, const char *key );
 qboolean Info_SetValueForKey( char *s, const char *key, const char *value, size_t maxsize );

@@ -15,15 +15,17 @@ GNU General Public License for more details.
 
 #include "common.h"
 
-#define MAX_INFO_KEY	64
-#define MAX_INFO_VALUE	64
+#define MAX_KV_SIZE		128
+#define MAX_SERVERINFO_STRING  512
 
-static char		infostring[MAX_INFO_STRING*4];
+#define COM_CheckString( string ) ( ( !string || !*string ) ? 0 : 1 )
+#define COM_CheckStringEmpty( string ) ( ( !*string ) ? 0 : 1 )
 
 /*
 =======================================================================
 
 			INFOSTRING STUFF
+
 =======================================================================
 */
 /*
@@ -35,44 +37,153 @@ printing current key-value pair
 */
 void Info_Print( const char *s )
 {
-	char	key[MAX_INFO_STRING];
-	char	value[MAX_INFO_STRING];
+	char	key[MAX_KV_SIZE];
+	char	value[MAX_KV_SIZE];
+	int	l, count;
 	char	*o;
-	int	l;
 
 	if( *s == '\\' ) s++;
 
 	while( *s )
 	{
+		count = 0;
 		o = key;
-		while( *s && *s != '\\' )
+
+		while( count < (MAX_KV_SIZE - 1) && *s && *s != '\\' )
+		{
 			*o++ = *s++;
+			count++;
+		}
 
 		l = o - key;
 		if( l < 20 )
 		{
-			Q_memset( o, ' ', 20 - l );
+			memset( o, ' ', 20 - l );
 			key[20] = 0;
 		}
 		else *o = 0;
-		Msg( "%s", key );
+
+		Con_Printf( "%s", key );
 
 		if( !*s )
 		{
-			Msg( "(null)\n" );
+			Con_Printf( "(null)\n" );
 			return;
 		}
 
+		count = 0;
 		o = value;
 		s++;
-		while( *s && *s != '\\' )
+		while( count < (MAX_KV_SIZE - 1) && *s && *s != '\\' )
+		{
 			*o++ = *s++;
+			count++;
+		}
 		*o = 0;
 
 		if( *s ) s++;
-		Msg( "%s\n", value );
+		Con_Printf( "%s\n", value );
 	}
 }
+
+/*
+==============
+Info_IsValid
+
+check infostring for potential problems
+==============
+*/
+qboolean Info_IsValid( const char *s )
+{
+	char	key[MAX_KV_SIZE];
+	char	value[MAX_KV_SIZE];
+	int	count;
+	char	*o;
+
+	if( *s == '\\' ) s++;
+
+	while( *s )
+	{
+		count = 0;
+		o = key;
+
+		while( count < (MAX_KV_SIZE - 1) && *s && *s != '\\' )
+		{
+			*o++ = *s++;
+			count++;
+		}
+		*o = 0;
+
+		if( !*s ) return false;
+
+		count = 0;
+		o = value;
+		s++;
+		while( count < (MAX_KV_SIZE - 1) && *s && *s != '\\' )
+		{
+			*o++ = *s++;
+			count++;
+		}
+		*o = 0;
+
+		if( !COM_CheckStringEmpty( value ) )
+			return false;
+
+		if( *s ) s++;
+	}
+
+	return true;
+}
+
+#if !XASH_DEDICATED
+/*
+==============
+Info_WriteVars
+
+==============
+*/
+void Info_WriteVars( file_t *f )
+{
+	char	*s = CL_Userinfo();
+	char	pkey[MAX_SERVERINFO_STRING];
+	static	char value[4][MAX_SERVERINFO_STRING]; // use two buffers so compares work without stomping on each other
+	static	int valueindex;
+	convar_t	*pcvar;
+	char	*o;
+
+	valueindex = (valueindex + 1) % 4;
+	if( *s == '\\' ) s++;
+
+	while( 1 )
+	{
+		o = pkey;
+		while( *s != '\\' )
+		{
+			if( !*s ) return;
+			*o++ = *s++;
+		}
+		*o = 0;
+		s++;
+
+		o = value[valueindex];
+
+		while( *s != '\\' && *s )
+		{
+			if( !*s ) return;
+			*o++ = *s++;
+		}
+		*o = 0;
+
+		pcvar = Cvar_FindVar( pkey );
+
+		if( !pcvar && pkey[0] != '*' )  // don't store out star keys
+			FS_Printf( f, "setinfo \"%s\" \"%s\"\n", pkey, value[valueindex] );
+
+		if( !*s ) return;
+		s++;
+	}
+}
+#endif // XASH_DEDICATED
 
 /*
 ===============
@@ -82,34 +193,40 @@ Searches the string for the given
 key and returns the associated value, or an empty string.
 ===============
 */
-char *GAME_EXPORT Info_ValueForKey( const char *s, const char *key )
+const char *Info_ValueForKey( const char *s, const char *key )
 {
-	char	pkey[MAX_INFO_STRING];
-	static	char value[2][MAX_INFO_STRING]; // use two buffers so compares work without stomping on each other
+	char	pkey[MAX_KV_SIZE];
+	static	char value[4][MAX_KV_SIZE]; // use two buffers so compares work without stomping on each other
 	static	int valueindex;
+	int	count;
 	char	*o;
-	
-	valueindex ^= 1;
+
+	valueindex = (valueindex + 1) % 4;
 	if( *s == '\\' ) s++;
 
 	while( 1 )
 	{
+		count = 0;
 		o = pkey;
-		while( *s != '\\' && *s != '\n' )
+
+		while( count < (MAX_KV_SIZE - 1) && *s != '\\' )
 		{
 			if( !*s ) return "";
 			*o++ = *s++;
+			count++;
 		}
 
 		*o = 0;
 		s++;
 
 		o = value[valueindex];
+		count = 0;
 
-		while( *s != '\\' && *s != '\n' && *s )
+		while( count < (MAX_KV_SIZE - 1) && *s && *s != '\\' )
 		{
 			if( !*s ) return "";
 			*o++ = *s++;
+			count++;
 		}
 		*o = 0;
 
@@ -123,40 +240,51 @@ char *GAME_EXPORT Info_ValueForKey( const char *s, const char *key )
 qboolean GAME_EXPORT Info_RemoveKey( char *s, const char *key )
 {
 	char	*start;
-	char	pkey[MAX_INFO_STRING];
-	char	value[MAX_INFO_STRING];
+	char	pkey[MAX_KV_SIZE];
+	char	value[MAX_KV_SIZE];
+	int	cmpsize = Q_strlen( key );
+	int	count;
 	char	*o;
 
-	if( Q_strstr( key, "\\" ))
+	if( cmpsize > ( MAX_KV_SIZE - 1 ))
+		cmpsize = MAX_KV_SIZE - 1;
+
+	if( Q_strchr( key, '\\' ))
 		return false;
 
 	while( 1 )
 	{
 		start = s;
 		if( *s == '\\' ) s++;
+		count = 0;
 		o = pkey;
 
-		while( *s != '\\' )
+		while( count < (MAX_KV_SIZE - 1) && *s != '\\' )
 		{
 			if( !*s ) return false;
 			*o++ = *s++;
+			count++;
 		}
 		*o = 0;
 		s++;
 
+		count = 0;
 		o = value;
-		while( *s != '\\' && *s )
+
+		while( count < (MAX_KV_SIZE - 1) && *s != '\\' && *s )
 		{
 			if( !*s ) return false;
 			*o++ = *s++;
+			count++;
 		}
 		*o = 0;
 
-		if( !Q_strcmp( key, pkey ))
+		if( !Q_strncmp( key, pkey, cmpsize ))
 		{
 			Q_strcpy( start, s ); // remove this part
 			return true;
 		}
+
 		if( !*s ) return false;
 	}
 }
@@ -164,29 +292,36 @@ qboolean GAME_EXPORT Info_RemoveKey( char *s, const char *key )
 void Info_RemovePrefixedKeys( char *start, char prefix )
 {
 	char	*s, *o;
-	char	pkey[MAX_INFO_STRING];
-	char	value[MAX_INFO_STRING];
+	char	pkey[MAX_KV_SIZE];
+	char	value[MAX_KV_SIZE];
+	int	count;
 
 	s = start;
 
 	while( 1 )
 	{
-		if( *s == '\\' )
-			s++;
+		if( *s == '\\' ) s++;
+
+		count = 0;
 		o = pkey;
-		while( *s != '\\' )
+
+		while( count < (MAX_KV_SIZE - 1) && *s != '\\' )
 		{
 			if( !*s ) return;
 			*o++ = *s++;
+			count++;
 		}
 		*o = 0;
 		s++;
 
+		count = 0;
 		o = value;
-		while( *s != '\\' && *s )
+
+		while( count < (MAX_KV_SIZE - 1) && *s && *s != '\\' )
 		{
 			if( !*s ) return;
 			*o++ = *s++;
+			count++;
 		}
 		*o = 0;
 
@@ -200,171 +335,139 @@ void Info_RemovePrefixedKeys( char *start, char prefix )
 	}
 }
 
-/*
-==================
-Info_Validate
-
-Some characters are illegal in info strings because they
-can mess up the server's parsing
-==================
-*/
-qboolean Info_Validate( const char *s )
+qboolean Info_IsKeyImportant( const char *key )
 {
-	if( Q_strstr( s, "\"" )) return false;
-	if( Q_strstr( s, ";" )) return false;
-	return true;
-}
-
-/*
-==================
-Info_IsImportantKey
-
-Check is key is important, like "model", "name", starkey and so on
-==================
-*/
-static int Info_KeyImportance( const char *key )
-{
-	// these keys are very important
-	// because clients uses these keys to identify or show playermodel
-	// it will ruin game, if they will be removed
-	if( !Q_strcmp( key, "model" ))
-		return 2;
-	if( !Q_strcmp( key, "name" ))
-		return 2;
-
-	// these keys are used mainly by server code
 	if( key[0] == '*' )
-		return 1;
+		return true;
+	if( !Q_strcmp( key, "name" ))
+		return true;
+	if( !Q_strcmp( key, "model" ))
+		return true;
 	if( !Q_strcmp( key, "rate" ))
-		return 1;
-	if( !Q_strcmp( key, "cl_lw" ))
-		return 1;
-	if( !Q_strcmp( key, "cl_lc" ))
-		return 1;
+		return true;
+	if( !Q_strcmp( key, "topcolor" ))
+		return true;
+	if( !Q_strcmp( key, "bottomcolor" ))
+		return true;
 	if( !Q_strcmp( key, "cl_updaterate" ))
-		return 1;
-	if( !Q_strcmp( key, "hltv" ))
-		return 1;
-
-	return 0; // not important key, can be omitted or removed
+		return true;
+	if( !Q_strcmp( key, "cl_lw" ))
+		return true;
+	if( !Q_strcmp( key, "cl_lc" ))
+		return true;
+	if( !Q_strcmp( key, "cl_nopred" ))
+		return true;
+	return false;
 }
 
-
-/*
-==================
-Info_FindLargestKey
-
-Find largest key, excluding keys which is important
-==================
-*/
-static char *Info_FindLargestKey( char *s, const int importance )
+char *Info_FindLargestKey( char *s )
 {
-	static char largestKey[MAX_INFO_KEY];
-	char key[MAX_INFO_KEY];
-	int largeKeySize = 0;
+	char	key[MAX_KV_SIZE];
+	char	value[MAX_KV_SIZE];
+	static	char largest_key[128];
+	int	largest_size = 0;
+	int	l, count;
+	char	*o;
+
+	*largest_key = 0;
 
 	if( *s == '\\' ) s++;
 
-	largestKey[0] = 0;
-
 	while( *s )
 	{
-		int keySize = 0, valueSize = 0;
+		int	size = 0;
 
-		while( keySize < MAX_INFO_KEY && *s && *s != '\\' )
+		count = 0;
+		o = key;
+
+		while( count < (MAX_KV_SIZE - 1) && *s && *s != '\\' )
 		{
-			key[keySize] = *s;
-			keySize++;
-			s++;
-		}
-		key[keySize] = 0;
-
-		if( !*s )
-			break;
-		if( *s == '\\' ) s++;
-
-		while( *s && *s != '\\' )
-		{
-			valueSize++;
-			s++;
+			*o++ = *s++;
+			count++;
 		}
 
-		// exclude important keys
-		if( largeKeySize < keySize + valueSize && Info_KeyImportance( key ) < importance )
-		{
-			largeKeySize = keySize + valueSize;
-			Q_strncpy( largestKey, key, sizeof( largestKey ) );
-		}
+		l = o - key;
+		*o = 0;
+		size = Q_strlen( key );
 
-		if( *s )
-			s++;
+		if( !*s ) return largest_key;
+
+		count = 0;
+		o = value;
+		s++;
+		while( count < (MAX_KV_SIZE - 1) && *s && *s != '\\' )
+		{
+			*o++ = *s++;
+			count++;
+		}
+		*o = 0;
+
+		if( *s ) s++;
+
+		size += Q_strlen( value );
+
+		if(( size > largest_size ) && !Info_IsKeyImportant( key ))
+		{
+			Q_strncpy( largest_key, key, sizeof( largest_key ));
+			largest_size = size;
+		}
 	}
 
-	return largestKey;
+	return largest_key;
 }
 
 qboolean Info_SetValueForStarKey( char *s, const char *key, const char *value, int maxsize )
 {
 	char	new[1024], *v;
-	int	c;
+	int	c, team;
 
-	if( Q_strstr( key, "\\" ) || Q_strstr( value, "\\" ))
+	if( Q_strchr( key, '\\' ) || Q_strchr( value, '\\' ))
 	{
 		MsgDev( D_ERROR, "SetValueForKey: can't use keys or values with a \\\n" );
 		return false;
 	}
 
-	if( Q_strstr( key, ";" ))
-	{
-		MsgDev( D_ERROR, "SetValueForKey: can't use keys or values with a semicolon\n" );
+	if( Q_strstr( key, ".." ) || Q_strstr( value, ".." ))
 		return false;
-	}
 
-	if( Q_strstr( key, "\"" ) || Q_strstr( value, "\"" ))
+	if( Q_strchr( key, '\"' ) || Q_strchr( value, '\"' ))
 	{
 		MsgDev( D_ERROR, "SetValueForKey: can't use keys or values with a \"\n" );
 		return false;
 	}
 
-	if( Q_strlen( key ) > MAX_INFO_KEY - 1 || Q_strlen( value ) > MAX_INFO_VALUE - 1 )
-	{
-		MsgDev( D_ERROR, "SetValueForKey: keys and values must be < %i characters.\n", MAX_INFO_KEY );
+	if( Q_strlen( key ) > ( MAX_KV_SIZE - 1 ) || Q_strlen( value ) > ( MAX_KV_SIZE - 1 ))
 		return false;
-	}
 
 	Info_RemoveKey( s, key );
 
-	if( !value || !Q_strlen( value ))
+	if( !COM_CheckString( value ) )
 		return true; // just clear variable
 
-	Q_snprintf( new, sizeof( new ) - 1, "\\%s\\%s", key, value );
-
+	Q_snprintf( new, sizeof( new ), "\\%s\\%s", key, value );
 	if( Q_strlen( new ) + Q_strlen( s ) > maxsize )
 	{
-		// If it is important key, force add it
-		int importance = Info_KeyImportance( key );
-
-		if( importance )
+		// no more room in buffer to add key/value
+		if( Info_IsKeyImportant( key ))
 		{
-			char *largeKey;
+			// keep removing the largest key/values until we have room
+			char	*largekey;
 
-			// remove largest key, check size. if there is still no room, do it again
 			do
 			{
-				largeKey = Info_FindLargestKey( s, importance );
-				Info_RemoveKey( s, largeKey );
-			}
-			while( Q_strlen( new ) + Q_strlen( s ) > maxsize && *largeKey != 0 );
+				largekey = Info_FindLargestKey( s );
+				Info_RemoveKey( s, largekey );
+			} while((( Q_strlen( new ) + Q_strlen( s )) >= maxsize ) && *largekey != 0 );
 
-			if( !*largeKey )
+			if( largekey[0] == 0 )
 			{
-				MsgDev( D_ERROR, "SetValueForKey: info string length exceeded\n" );
+				// no room to add setting
 				return true; // info changed, new value can't saved
 			}
 		}
 		else
 		{
-			MsgDev( D_ERROR, "SetValueForKey: info string length exceeded\n" );
+			// no room to add setting
 			return true; // info changed, new value can't saved
 		}
 	}
@@ -373,12 +476,13 @@ qboolean Info_SetValueForStarKey( char *s, const char *key, const char *value, i
 	s += Q_strlen( s );
 	v = new;
 
+	team = ( Q_stricmp( key, "team" ) == 0 ) ? true : false;
+
 	while( *v )
 	{
-		c = *v++;
-		c &= 255;	// strip high bits
-		if( c >= 32 && c <= 255 )
-			*s++ = c;
+		c = (byte)*v++;
+		if( team ) c = Q_tolower( c );
+		if( c > 13 ) *s++ = c;
 	}
 	*s = 0;
 
@@ -386,7 +490,7 @@ qboolean Info_SetValueForStarKey( char *s, const char *key, const char *value, i
 	return true;
 }
 
-qboolean GAME_EXPORT Info_SetValueForKey( char *s, const char *key, const char *value, size_t maxsize )
+qboolean Info_SetValueForKey( char *s, const char *key, const char *value, size_t maxsize )
 {
 	if( key[0] == '*' )
 	{
@@ -397,28 +501,23 @@ qboolean GAME_EXPORT Info_SetValueForKey( char *s, const char *key, const char *
 	return Info_SetValueForStarKey( s, key, value, maxsize );
 }
 
+static char infostring[MAX_INFO_STRING*4];
+
 static void Cvar_LookupBitInfo( const char *name, const char *string, void *info, void *unused )
 {
-	Info_SetValueForKey( (char *)info, name, string, MAX_INFO_STRING );
+        Info_SetValueForKey( (char *)info, name, string, MAX_INFO_STRING );
 }
 
 char *Cvar_Userinfo( void )
 {
-	infostring[0] = 0; // clear previous calls
-	Cvar_LookupVars( CVAR_USERINFO, infostring, NULL, Cvar_LookupBitInfo ); 
-	return infostring;
+        infostring[0] = 0; // clear previous calls
+        Cvar_LookupVars( CVAR_USERINFO, infostring, NULL, Cvar_LookupBitInfo ); 
+        return infostring;
 }
 
 char *Cvar_Serverinfo( void )
 {
-	infostring[0] = 0; // clear previous calls
-	Cvar_LookupVars( CVAR_SERVERINFO, infostring, NULL, Cvar_LookupBitInfo ); 
-	return infostring;
-}
-
-char *Cvar_Physicinfo( void )
-{
-	infostring[0] = 0; // clear previous calls
-	Cvar_LookupVars( CVAR_PHYSICINFO, infostring, NULL, Cvar_LookupBitInfo ); 
-	return infostring;
+        infostring[0] = 0; // clear previous calls
+        Cvar_LookupVars( CVAR_SERVERINFO, infostring, NULL, Cvar_LookupBitInfo ); 
+        return infostring;
 }

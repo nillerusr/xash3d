@@ -854,6 +854,11 @@ qboolean SV_ProcessUserAgent( netadr_t from, char *useragent )
 			Netchan_OutOfBandPrint( NS_SERVER, from, "errormsg\nThis server does not allow VR\n" );
 			return false;
 		}
+		if( input_devices <= 0 )
+		{
+			Netchan_OutOfBandPrint( NS_SERVER, from, "errormsg\nConnection problem\n" );
+			return false;
+		}
 	}
 
 	if( id )

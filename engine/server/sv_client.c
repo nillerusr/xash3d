@@ -2333,14 +2333,8 @@ void SV_Kill_f( sv_client_t *cl )
 	if( sv.background )
 		return;
 
-	if( !cl || !SV_IsValidEdict( cl->edict ) )
+	if( !cl || !SV_IsValidEdict( cl->edict ))
 		return;
-
-	if( cl->state != cs_spawned )
-	{
-		SV_ClientPrintf( cl, PRINT_HIGH, "Can't suicide -- not connected!\n");
-		return;
-	}
 
 	if( cl->edict->v.health <= 0.0f )
 	{
@@ -3393,6 +3387,7 @@ void SV_ConnectionlessPacket( netadr_t from, sizebuf_t *msg )
 	else if( !Q_strcmp( c, "netinfo" )) SV_BuildNetAnswer( from );
 	else if( !Q_strcmp( c, "s")) SV_AddToMaster( from, msg );
 	else if( !Q_strcmp( c, "T" "Source" ) ) SV_TSourceEngineQuery( from );
+#if 0
 	else if( !Q_strcmp( c, "c" ) )
 	{
 		netadr_t to;
@@ -3400,6 +3395,7 @@ void SV_ConnectionlessPacket( netadr_t from, sizebuf_t *msg )
 		if( NET_StringToAdr( Cmd_Argv( 1 ), &to ) )
 			SV_Info( to, PROTOCOL_VERSION );
 	}
+#endif
 	else if( !Q_strcmp( c, "i" ) )
 	{
 		// A2A_PING
