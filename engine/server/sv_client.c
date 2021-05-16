@@ -91,6 +91,25 @@ void SV_GetChallenge( netadr_t from )
 
 /*
 ==================
+SV_ValidateUserInfo
+
+Validation of userinfo
+==================
+*/
+void SV_ValidateUserInfo( char *userinfo )
+{
+	char *name = Info_ValueForKey( userinfo, "name" );
+	char *model = Info_ValueForKey( userinfo, "model" );
+
+	if( !name || !name[0] )
+		Info_SetValueForKey( userinfo, "name", "unnamed", sizeof( userinfo ) );
+
+	if( !model || !model[0] )
+		Info_SetValueForKey( userinfo, "model", "gordon", sizeof( userinfo ) );
+}
+
+/*
+==================
 SV_DirectConnect
 
 A connection request that did not come from the master
@@ -140,6 +159,8 @@ void SV_DirectConnect( netadr_t from )
 	qport = Q_atoi( Cmd_Argv( 2 ));
 	challenge = Q_atoi( Cmd_Argv( 3 ));
 	Q_strncpy( userinfo, Cmd_Argv( 4 ), sizeof( userinfo ));
+
+	SV_ValidateUserInfo( userinfo );
 
 	requested_extensions = Q_atoi( Cmd_Argv( 5 ) );
 
