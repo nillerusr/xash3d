@@ -96,16 +96,22 @@ SV_ValidateUserInfo
 Validation of userinfo
 ==================
 */
-void SV_ValidateUserInfo( char *userinfo )
+void SV_ValidateUserInfo( char *userinfo, size_t size )
 {
+	if( !Info_IsValid(userinfo) )
+		userinfo[0] = '\0';
+
 	char *name = Info_ValueForKey( userinfo, "name" );
 	char *model = Info_ValueForKey( userinfo, "model" );
 
 	if( !name || !name[0] )
-		Info_SetValueForKey( userinfo, "name", "unnamed", sizeof( userinfo ) );
+		Info_SetValueForKey( userinfo, "name", "unnamed", size );
 
 	if( !model || !model[0] )
-		Info_SetValueForKey( userinfo, "model", "gordon", sizeof( userinfo ) );
+		Info_SetValueForKey( userinfo, "model", "gordon", size );
+
+	name = Info_ValueForKey( userinfo, "name" );
+	model = Info_ValueForKey( userinfo, "model" );
 }
 
 /*
@@ -160,7 +166,7 @@ void SV_DirectConnect( netadr_t from )
 	challenge = Q_atoi( Cmd_Argv( 3 ));
 	Q_strncpy( userinfo, Cmd_Argv( 4 ), sizeof( userinfo ));
 
-	SV_ValidateUserInfo( userinfo );
+	SV_ValidateUserInfo( userinfo, sizeof( userinfo ) );
 
 	requested_extensions = Q_atoi( Cmd_Argv( 5 ) );
 
@@ -2181,7 +2187,9 @@ static void SV_UserinfoChanged( sv_client_t *cl, const char *userinfo )
 
 	if( !SV_ShouldUpdateUserinfo( cl )) return; // ignored
 
+
 	Q_strncpy( cl->userinfo, userinfo, sizeof( cl->userinfo ));
+	SV_ValidateUserInfo( cl->userinfo, sizeof( cl->userinfo ));
 
 	val = Info_ValueForKey( cl->userinfo, "name" );
 	Q_strncpy( temp2, val, sizeof( temp2 ));

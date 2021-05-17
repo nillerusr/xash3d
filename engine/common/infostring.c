@@ -100,6 +100,8 @@ qboolean Info_IsValid( const char *s )
 	int	count;
 	char	*o;
 
+	value[0] = 0;
+
 	if( *s == '\\' ) s++;
 
 	while( *s )
@@ -114,7 +116,7 @@ qboolean Info_IsValid( const char *s )
 		}
 		*o = 0;
 
-		if( !*s ) return false;
+		if( !*s || count >= (MAX_KV_SIZE-1)) return false;
 
 		count = 0;
 		o = value;
@@ -126,11 +128,14 @@ qboolean Info_IsValid( const char *s )
 		}
 		*o = 0;
 
-		if( !COM_CheckStringEmpty( value ) )
+		if( !COM_CheckStringEmpty( value ) || count >= (MAX_KV_SIZE-1))
 			return false;
 
 		if( *s ) s++;
 	}
+
+	if( !COM_CheckStringEmpty( value ) )
+		return false;
 
 	return true;
 }
