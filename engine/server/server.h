@@ -715,4 +715,12 @@ void SV_ShutdownFilter( void );
 qboolean SV_CheckIP( netadr_t *adr );
 qboolean SV_CheckID( const char *id );
 
+struct reject_s
+{
+	uint last_from;
+	float ltime;
+	uint conn_count;
+} typedef reject_t;
+
+void SV_RejectAttack( netadr_t *addr, reject_t *rej );
 #endif//SERVER_H

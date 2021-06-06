@@ -336,22 +336,12 @@ end:
 	return true;
 }
 #define IPARGS(ip) (ip >> 24) & 0xFF, (ip >> 16) & 0xFF, (ip >> 8) & 0xFF, ip & 0xFF
-void SV_AddIP_f( void )
+void SV_AddIP( float time, uint ip, uint mask )
 {
-	float time = Q_atof( Cmd_Argv( 1 ) );
-	char *ipstr = Cmd_Argv( 2 );
-	char *maskstr = Cmd_Argv( 3 );
-	uint ip, mask;
 	ipfilter_t *filter;
 
 	if( time )
 		time = host.realtime + time * 60.0f;
-
-	if( !StringToIP( ipstr, maskstr, &ip, &mask ) )
-	{
-		Msg( "Usage: addip <minutes> <ip> [mask]\n0 minutes for permanent ban\n");
-		return;
-	}
 
 	SV_RemoveIP( ip, mask );
 
@@ -362,6 +352,22 @@ void SV_AddIP_f( void )
 	filter->next = ipfilter;
 
 	ipfilter = filter;
+}
+
+void SV_AddIP_f( void )
+{
+	float time = Q_atof( Cmd_Argv( 1 ) );
+	char *ipstr = Cmd_Argv( 2 );
+	char *maskstr = Cmd_Argv( 3 );
+	uint ip, mask;
+
+	if( !StringToIP( ipstr, maskstr, &ip, &mask ) )
+	{
+		Msg( "Usage: addip <minutes> <ip> [mask]\n0 minutes for permanent ban\n");
+		return;
+	}
+
+	SV_AddIP( time, ip, mask );
 }
 
 void SV_ListIP_f( void )

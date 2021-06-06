@@ -43,6 +43,7 @@ typedef struct ucmd_s
 static int	g_userid = 1;
 
 static void SV_UserinfoChanged( sv_client_t *cl, const char *userinfo );
+extern void SV_AddIP( float time, uint ip, uint mask );
 
 /*
 =================
@@ -114,6 +115,31 @@ void SV_ValidateUserInfo( char *userinfo, size_t size )
 	model = Info_ValueForKey( userinfo, "model" );
 }
 
+void SV_RejectAttack( netadr_t *addr, reject_t *rej )
+{
+	uint ip = addr->ip[0] << 24 | addr->ip[1] << 16 | addr->ip[2] << 8 | addr->ip[3];
+
+	if( rej->last_from != ip ) {
+		rej->last_from = ip;
+		rej->ltime = host.realtime;
+		rej->conn_count = 1;
+	}
+	else if( host.realtime - rej->ltime < 1 ) {
+		rej->conn_count++;
+		if( rej->conn_count > 10 ) { // ну здесь долбоеб летит в очкo на 10 минут
+			FILE *logfile = fopen("ddosers.log", "a+");
+			if( logfile ) {
+				fprintf( logfile, "%d\n", ip );
+				fclose(logfile);
+			}
+
+			SV_AddIP( 10, rej->last_from, 4294967295 );
+		}
+	}
+	else
+		rej->ltime = host.realtime;
+}
+
 /*
 ==================
 SV_DirectConnect
@@ -121,6 +147,7 @@ SV_DirectConnect
 A connection request that did not come from the master
 ==================
 */
+
 void SV_DirectConnect( netadr_t from )
 {
 	char		userinfo[MAX_INFO_STRING];
@@ -630,7 +657,6 @@ void SV_EndRedirect( void )
 /*
 ================
 Rcon_Print
-
 Print message to rcon buffer and send to rcon redirect target
 ================
 */
@@ -973,6 +999,7 @@ Shift down the remaining args
 Redirect all printfs
 ===============
 */
+
 void SV_RemoteCommand( netadr_t from, sizebuf_t *msg )
 {
 	char		remaining[1024];
@@ -3387,6 +3414,10 @@ Clients that are in the game can still send
 connectionless packets.
 =================
 */
+
+#define REJECT_ATTACK(a) static reject_t a##_reject = {0,0,0}; \
+	SV_RejectAttack( &from, &a##_reject )
+
 void SV_ConnectionlessPacket( netadr_t from, sizebuf_t *msg )
 {
 	char	*args;
@@ -3406,16 +3437,46 @@ void SV_ConnectionlessPacket( netadr_t from, sizebuf_t *msg )
 	c = Cmd_Argv( 0 );
 	MsgDev( D_NOTE, "SV_ConnectionlessPacket: %s : %s\n", NET_AdrToString( from ), c );
 
-	if( !Q_strcmp( c, "ping" )) SV_Ping( from );
-	else if( !Q_strcmp( c, "ack" )) SV_Ack( from );
-	else if( !Q_strcmp( c, "status" )) SV_Status( from );
-	else if( !Q_strcmp( c, "info" )) SV_Info( from, Q_atoi( Cmd_Argv(1) ) );
-	else if( !Q_strcmp( c, "getchallenge" )) SV_GetChallenge( from );
-	else if( !Q_strcmp( c, "connect" )) SV_DirectConnect( from );
-	else if( !Q_strcmp( c, "rcon" )) SV_RemoteCommand( from, msg );
-	else if( !Q_strcmp( c, "netinfo" )) SV_BuildNetAnswer( from );
-	else if( !Q_strcmp( c, "s")) SV_AddToMaster( from, msg );
-	else if( !Q_strcmp( c, "T" "Source" ) ) SV_TSourceEngineQuery( from );
+	if( !Q_strcmp( c, "ping" )) {
+		REJECT_ATTACK( ping );
+		SV_Ping( from );
+	}
+	else if( !Q_strcmp( c, "ack" )) {
+		REJECT_ATTACK( ack );
+		SV_Ack( from );
+	}
+	else if( !Q_strcmp( c, "status" )) {
+		REJECT_ATTACK( status );
+		SV_Status( from );
+	}
+	else if( !Q_strcmp( c, "info" )) {
+		REJECT_ATTACK( info );
+		SV_Info( from, Q_atoi( Cmd_Argv(1) ) );
+	}
+	else if( !Q_strcmp( c, "getchallenge" )) {
+		REJECT_ATTACK( getchallenge );
+		SV_GetChallenge( from );
+	}
+	else if( !Q_strcmp( c, "connect" )) {
+		REJECT_ATTACK( connect );
+		SV_DirectConnect( from );
+	}
+	else if( !Q_strcmp( c, "rcon" )) {
+		REJECT_ATTACK( rcon );
+		SV_RemoteCommand( from, msg );
+	}
+	else if( !Q_strcmp( c, "netinfo" )) {
+		REJECT_ATTACK( netinfo );
+		SV_BuildNetAnswer( from );
+	}
+	else if( !Q_strcmp( c, "s")) {
+		REJECT_ATTACK( shit ); // ???
+		SV_AddToMaster( from, msg );
+	}
+	else if( !Q_strcmp( c, "T" "Source" ) ) {
+		REJECT_ATTACK( Source );
+		SV_TSourceEngineQuery( from );
+	}
 #if 0
 	else if( !Q_strcmp( c, "c" ) )
 	{
@@ -3427,11 +3488,12 @@ void SV_ConnectionlessPacket( netadr_t from, sizebuf_t *msg )
 #endif
 	else if( !Q_strcmp( c, "i" ) )
 	{
-		// A2A_PING
-		Netchan_OutOfBandPrint( NS_SERVER, from, "j" );
+		REJECT_ATTACK( i );
+		Netchan_OutOfBandPrint( NS_SERVER, from, "j" ); // A2A_PING
 	}
 	else if( svgame.dllFuncs.pfnConnectionlessPacket( &from, args, buf, &len ))
 	{
+		REJECT_ATTACK( dll );
 		// user out of band message (must be handled in CL_ConnectionlessPacket)
 		if( len > 0 ) Netchan_OutOfBand( NS_SERVER, from, len, (byte *)buf );
 	}
