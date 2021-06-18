@@ -422,6 +422,7 @@ void V_PostRender( void )
 		R_Strobe_DrawDebugInfo( );
 
 		SCR_DrawPos();
+		SCR_DrawTime();
 		SV_DrawOrthoTriangles();
 		CL_DrawDemoRecording();
 		R_ShowTextures();

@@ -48,7 +48,6 @@ convar_t	*sv_spectatormaxspeed;
 convar_t	*sv_accelerate;
 convar_t	*sv_friction;
 
-
 convar_t	*sv_edgefriction;
 convar_t	*sv_waterfriction;
 convar_t	*sv_stopspeed;
@@ -120,6 +119,8 @@ convar_t	*sv_allow_touch;
 convar_t	*sv_allow_mouse;
 convar_t	*sv_allow_joystick;
 convar_t	*sv_allow_vr;
+
+convar_t	*sv_maxrate;
 
 void Master_Shutdown( void );
 
@@ -1010,6 +1011,8 @@ void SV_Init( void )
 	sv_userinfo_penalty_time = Cvar_Get( "sv_userinfo_penalty_time", "0.3", CVAR_ARCHIVE, "initial penalty time" );
 	sv_userinfo_penalty_multiplier = Cvar_Get( "sv_userinfo_penalty_multiplier", "2", CVAR_ARCHIVE, "penalty time multiplier" );
 	sv_userinfo_penalty_attempts = Cvar_Get( "sv_userinfo_penalty_attempts", "4", CVAR_ARCHIVE, "if max attempts count was exceeded, penalty time will be increased" );
+
+	sv_maxrate = Cvar_Get( "sv_maxrate", "40000", CVAR_ARCHIVE, "max rate");
 
 	Cmd_AddCommand( "download_resources", SV_DownloadResources_f, "try to download missing resources to server");
 

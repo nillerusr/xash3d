@@ -141,7 +141,6 @@ void SCR_DrawPos( void )
 	static char	msg[MAX_SYSPATH];
 	char vel[64];
 	float speed;
-	char vel[20];
 
 	cl_entity_t *pPlayer;
 	rgba_t color;
@@ -167,7 +166,6 @@ void SCR_DrawPos( void )
 	MakeRGBA( color, 255, 255, 255, 255 );
 
 	Con_DrawString( scr_width->integer / 2, 4, msg, color );
-
 }
 
 /*
@@ -182,7 +180,6 @@ void SCR_DrawTime( void )
 {
 	static char     msg[MAX_SYSPATH];
 	rgba_t color;
-	char min[2],sec[2],buffer[6];
 	time_t rawtime;
 	struct tm * timeinfo;
 	int offset_w, offset_h;
@@ -193,20 +190,7 @@ void SCR_DrawTime( void )
 	time ( &rawtime );
 	timeinfo = localtime ( &rawtime );
 
-	Q_sprintf(buffer,"%d",timeinfo->tm_hour);
-
-	Q_sprintf(min,"%d",timeinfo->tm_min);
-	Q_sprintf(sec,"%d",timeinfo->tm_sec);
-	if( strlen(min) < 2 )
-		Q_sprintf(buffer,"%s:0%s",buffer,min);
-	else
-		Q_sprintf(buffer,"%s:%s",buffer,min);
-	if( strlen(sec) < 2 )
-		Q_sprintf(buffer,"%s:0%s",buffer,sec);
-	else
-		Q_sprintf(buffer,"%s:%s",buffer,sec);
-
-	Q_snprintf( msg, MAX_SYSPATH, "time: %s", buffer );
+	Q_snprintf( msg, MAX_SYSPATH, "time: %02d:%02d:%02d", timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec );
 
 	MakeRGBA( color, 255, 255, 255, 255 );
 	Con_DrawStringLen( msg, &offset_w, &offset_h );

@@ -140,56 +140,6 @@ qboolean Info_IsValid( const char *s )
 	return true;
 }
 
-#if !XASH_DEDICATED
-/*
-==============
-Info_WriteVars
-
-==============
-*/
-void Info_WriteVars( file_t *f )
-{
-	char	*s = CL_Userinfo();
-	char	pkey[MAX_SERVERINFO_STRING];
-	static	char value[4][MAX_SERVERINFO_STRING]; // use two buffers so compares work without stomping on each other
-	static	int valueindex;
-	convar_t	*pcvar;
-	char	*o;
-
-	valueindex = (valueindex + 1) % 4;
-	if( *s == '\\' ) s++;
-
-	while( 1 )
-	{
-		o = pkey;
-		while( *s != '\\' )
-		{
-			if( !*s ) return;
-			*o++ = *s++;
-		}
-		*o = 0;
-		s++;
-
-		o = value[valueindex];
-
-		while( *s != '\\' && *s )
-		{
-			if( !*s ) return;
-			*o++ = *s++;
-		}
-		*o = 0;
-
-		pcvar = Cvar_FindVar( pkey );
-
-		if( !pcvar && pkey[0] != '*' )  // don't store out star keys
-			FS_Printf( f, "setinfo \"%s\" \"%s\"\n", pkey, value[valueindex] );
-
-		if( !*s ) return;
-		s++;
-	}
-}
-#endif // XASH_DEDICATED
-
 /*
 ===============
 Info_ValueForKey
