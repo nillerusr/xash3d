@@ -2211,9 +2211,10 @@ static void SV_UserinfoChanged( sv_client_t *cl, const char *userinfo )
 	const char *model;
 
 	if( !userinfo || !userinfo[0] ) return; // ignored
-
 	if( !SV_ShouldUpdateUserinfo( cl )) return; // ignored
 
+	// call prog code to allow overrides
+	svgame.dllFuncs.pfnClientUserInfoChanged( cl->edict, cl->userinfo );
 
 	Q_strncpy( cl->userinfo, userinfo, sizeof( cl->userinfo ));
 	SV_ValidateUserInfo( cl->userinfo, sizeof( cl->userinfo ));
@@ -2337,8 +2338,6 @@ static void SV_UserinfoChanged( sv_client_t *cl, const char *userinfo )
 		SV_SetModel( ent, "models/player.mdl" );
 	}
 
-	// call prog code to allow overrides
-	svgame.dllFuncs.pfnClientUserInfoChanged( cl->edict, cl->userinfo );
 	ent->v.netname = MAKE_STRING( cl->name );
 	if( cl->state >= cs_connected ) cl->sendinfo = true; // needs for update client info
 }
