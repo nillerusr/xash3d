@@ -825,6 +825,9 @@ qboolean SV_ProcessUserAgent( netadr_t from, char *useragent )
 	char *input_devices_str = Info_ValueForKey( useragent, "d" );
 	char *id = Info_ValueForKey( useragent, "i" );
 
+	if( from.type == NA_LOOPBACK )
+		return true;
+
 	if( !sv_allow_noinputdevices->integer && ( !input_devices_str || !input_devices_str[0] ) )
 	{
 		Netchan_OutOfBandPrint( NS_SERVER, from, "print\nThis server does not allow\nconnect without input devices list.\nPlease update your engine.\n" );
@@ -865,7 +868,6 @@ qboolean SV_ProcessUserAgent( netadr_t from, char *useragent )
 	if( id )
 	{
 		qboolean banned = SV_CheckID( id );
-
 		if( banned )
 		{
 			Netchan_OutOfBandPrint( NS_SERVER, from, "errormsg\nYou are banned!\n" );
